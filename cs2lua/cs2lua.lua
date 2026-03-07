@@ -1,67 +1,37 @@
--- [[ ❄️ ttni131 - WINTER MENU | CS2 BLOX STRIKE ]]
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "❄️ Winter Panel | CS2 Blox Strike",
-   LoadingTitle = "Yükleniyor...",
-   LoadingSubtitle = "ttni131 tarafından",
-   ConfigurationSaving = {Enabled = true, FolderName = "ttni_config"}
-})
-
-local Tab = Window:CreateTab("Ana Özellikler", "snowflake")
-
--- Özellikler
-_G.Aimbot = false
-_G.ESP = false
-
-Tab:CreateToggle({
-   Name = "Aimbot (Düşman Kilit)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.Aimbot = Value
-   end
-})
-
-Tab:CreateToggle({
-   Name = "ESP (Kutu)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.ESP = Value
-   end
-})
-
--- Mantık
-local Players = game:GetService("Players")
+-- JJS İçin En Basit Versiyon
+local Player = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
-RunService.RenderStepped:Connect(function()
-    if _G.Aimbot then
-        local target = nil
-        local dist = 999
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= Players.LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local pos, onScreen = Camera:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
-                if onScreen then
-                    local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                    if mag < dist then target = p.Character.HumanoidRootPart dist = mag end
-                end
-            end
-        end
-        if target then Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position) end
-    end
+_G.ESP = false
 
-    if _G.ESP then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Character and not p.Character:FindFirstChild("BoxESP") then
-                local b = Instance.new("Highlight", p.Character)
-                b.Name = "BoxESP"
-                b.FillColor = Color3.fromRGB(173, 216, 230)
+-- Z Tuşu: ESP (Kutu) Aç/Kapat
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Z then
+        _G.ESP = not _G.ESP
+        print("ESP Durumu: " .. tostring(_G.ESP))
+    end
+end)
+
+-- Sürekli Döngü
+RunService.RenderStepped:Connect(function()
+    -- Basit ESP
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= Player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if _G.ESP then
+                -- Basit bir kutu çizer
+                local pos, onScreen = Camera:WorldToScreenPoint(v.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    -- JJS'nin anlayacağı en basit yöntem: Görsel efekt
+                    local part = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
+                    part.FillColor = Color3.fromRGB(0, 255, 255)
+                    part.FillTransparency = 0.5
+                end
+            else
+                local part = v.Character:FindFirstChild("Highlight")
+                if part then part:Destroy() end
             end
-        end
-    else
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("BoxESP") then p.Character.BoxESP:Destroy() end
         end
     end
 end)
