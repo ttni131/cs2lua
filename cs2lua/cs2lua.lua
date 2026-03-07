@@ -1,57 +1,69 @@
--- CS2 Blox Strike: Kar Temalı Kontrol Paneli
--- Tema: Açık Mavi ve Beyaz (Snowy UI)
+-- [[ ❄️ WINTER CS2 PANEL | BLOX STRIKE ❄️ ]]
+-- Efendimiz için özel olarak hazırlanmıştır.
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/7yzh/Orion/main/source"))() -- Popüler UI Kütüphanesi
-local Window = Library:MakeWindow({Name = "❄️ Winter CS2 Panel | Blox Strike", HidePremium = false, SaveConfig = true, ConfigFolder = "WinterCS2"})
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "❄️ Winter Panel | CS2 Blox Strike", HidePremium = false, SaveConfig = true, ConfigFolder = "WinterCS2"})
 
--- Değişkenler
-local AimbotEnabled = false
-local ESPEnabled = false
-local TeamCheck = true
-local FOVRadius = 100
+-- [[ DEĞİŞKENLER ]]
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
 
--- 1. SEKME: ANA ÖZELLİKLER
+_G.AimbotEnabled = false
+_G.ESPEnabled = false
+_G.TeamCheck = true
+_G.AimbotFOV = 100
+_G.CircleVisible = true
+
+-- [[ FOV GÖSTERGESİ ]]
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1
+FOVCircle.NumSides = 100
+FOVCircle.Radius = _G.AimbotFOV
+FOVCircle.Filled = false
+FOVCircle.Visible = _G.CircleVisible
+FOVCircle.Color = Color3.fromRGB(173, 216, 230) -- Kar Mavisi
+
+-- [[ ANA SEKME ]]
 local MainTab = Window:MakeTab({
-	Name = "Ana Özellikler",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
+	Name = "Hile Özellikleri",
+	Icon = "rbxassetid://4483345998"
 })
 
--- Aimbot Toggle
 MainTab:AddToggle({
-	Name = "Aimbot (Düşmana Kilitlen)",
+	Name = "Aimbot (Kilitlenme)",
 	Default = false,
 	Callback = function(Value)
-		AimbotEnabled = Value
+		_G.AimbotEnabled = Value
 	end    
 })
 
--- ESP / Wallhack Toggle
 MainTab:AddToggle({
 	Name = "ESP (Wallhack)",
 	Default = false,
 	Callback = function(Value)
-		ESPEnabled = Value
+		_G.ESPEnabled = Value
 	end    
 })
 
--- 2. SEKME: AYARLAR (FOV & TEAM)
+-- [[ AYARLAR SEKMESİ ]]
 local SettingsTab = Window:MakeTab({
 	Name = "Gelişmiş Ayarlar",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
+	Icon = "rbxassetid://4483345998"
 })
 
 SettingsTab:AddSlider({
 	Name = "Aimbot FOV",
-	Min = 10,
+	Min = 50,
 	Max = 500,
 	Default = 100,
-	Color = Color3.fromRGB(173, 216, 230), -- Kar Mavisi
+	Color = Color3.fromRGB(255, 255, 255),
 	Increment = 1,
 	ValueName = "Mesafe",
 	Callback = function(Value)
-		FOVRadius = Value
+		_G.AimbotFOV = Value
+		FOVCircle.Radius = Value
 	end    
 })
 
@@ -59,16 +71,74 @@ SettingsTab:AddToggle({
 	Name = "Takım Arkadaşını Atla",
 	Default = true,
 	Callback = function(Value)
-		TeamCheck = Value
+		_G.TeamCheck = Value
 	end    
 })
 
--- FONKSİYON: Aimbot Mantığı (Basit Görünüm)
-game:GetService("RunService").RenderStepped:Connect(function()
-    if AimbotEnabled then
-        -- Burada en yakın düşmanı bulan ve kamerayı ona odaklayan döngü çalışır
-        -- TeamCheck kontrolü ile 'game.Players.LocalPlayer.Team' karşılaştırılır
+SettingsTab:AddToggle({
+	Name = "FOV Çizgisini Göster",
+	Default = true,
+	Callback = function(Value)
+		FOVCircle.Visible = Value
+	end    
+})
+
+-- [[ LUA FONKSİYONLARI ]]
+
+local function GetClosestPlayer()
+    local Target = nil
+    local Dist = _G.AimbotFOV
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid").Health > 0 then
+            if _G.TeamCheck and v.Team == LocalPlayer.Team then continue end
+
+            local ScreenPoint = Camera:WorldToScreenPoint(v.Character.HumanoidRootPart.Position)
+            local VectorDist = (Vector2.new(ScreenPoint.X, ScreenPoint.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+
+            if VectorDist < Dist then
+                Target = v.Character.HumanoidRootPart
+                Dist = VectorDist
+            end
+        end
+    end
+    return Target
+end
+
+-- Ana Döngü (Render)
+RunService.RenderStepped:Connect(function()
+    -- FOV Dairesini Güncelle
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+    -- Aimbot Çalıştır
+    if _G.AimbotEnabled then
+        local Target = GetClosestPlayer()
+        if Target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
+        end
+    end
+
+    -- ESP Çalıştır
+    if _G.ESPEnabled then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and not p.Character:FindFirstChild("WinterESP") then
+                if _G.TeamCheck and p.Team == LocalPlayer.Team then continue end
+                
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = "WinterESP"
+                Highlight.FillColor = Color3.fromRGB(173, 216, 230)
+                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                Highlight.FillTransparency = 0.5
+                Highlight.Parent = p.Character
+            end
+        end
+    else
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("WinterESP") then
+                p.Character.WinterESP:Destroy()
+            end
+        end
     end
 end)
 
-Library:Init()
+OrionLib:Init()
